@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  nginx:
+    build: ./nginx
+    container_name: cipherops-nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - cipherops-net
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: cipherops-frontend
+    environment:
+      - NODE_ENV=production
+    networks:
+      - cipherops-net
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: cipherops-backend
+    environment:
+      - NODE_ENV=production
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=${POSTGRES_USER:-cipherops}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-cipherops_secret_2024}
+      - POSTGRES_DB=${POSTGRES_DB:-cipherops}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SESSION_SECRET=${SESSION_SECRET:-f4llb4ck_s3ss10n_s3cr3t_ch4ng3_m3}
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - cipherops-net
+    # Needed so the Node.js inspector (--inspect) can be attached from outside the container
+    cap_add:
+      - SYS_PTRACE
+    restart: unless-stopped
+
+  redis:
+    build: ./redis
+    container_name: cipherops-redis
+    # INTENTIONAL MISCONFIGURATION: running Redis as root (no auth, bind 0.0.0.0)
+    # SSH server also runs inside the container to enable the key-injection privesc chain.
+    user: root
+    ports:
+      - "2222:22"      # Redis SSH – reachable after key injection (Step 4)
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - cipherops-net
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:14-alpine
+    container_name: cipherops-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cipherops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cipherops_secret_2024}
+      POSTGRES_DB: ${POSTGRES_DB:-cipherops}
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - cipherops-net
+    restart: unless-stopped
+
+networks:
+  cipherops-net:
+    driver: bridge
+
+volumes:
+  pgdata:
