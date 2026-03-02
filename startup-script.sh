@@ -54,7 +54,7 @@ systemctl enable --now docker
 
 # --- 2. Repository Setup ---
 # LAB CONFIG: Set this to your GitHub repo URL before deploying
-REPO_URL="https://github.com/YOUR_USERNAME/cipherOps-internal-portal-lab.git"
+REPO_URL="https://github.com/vulnerable-labs/cipherOps-internal-portal-lab.git"
 REPO_DIR="/opt/cipherops-lab"
 
 rm -rf "$REPO_DIR"
